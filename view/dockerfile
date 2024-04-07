@@ -1,0 +1,10 @@
+FROM node:21.7.2
+WORKDIR /app
+COPY view/package*.json ./
+RUN npm install
+COPY view/ .
+RUN npm run build
+FROM nginx:stable-alpine as production-stage
+COPY --from=0 /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

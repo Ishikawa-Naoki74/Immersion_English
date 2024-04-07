@@ -1,0 +1,17 @@
+version: '3.8'
+service:
+ api:
+  build: ./api
+  volumes:
+   - ./api:/app
+  ports:
+   - "8000:8000"
+  environment:
+   - DEBUG=1 # Djangoのデバッグモードを有効にする
+ view:
+  build : ./view
+  volumes: 
+   - ./view:/app
+   - /app/node_modules
+  ports:
+   - "8080:8080" 

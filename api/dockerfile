@@ -1,0 +1,15 @@
+# 公式イメージ
+FROM python:3.11.5
+# 環境変数を設定
+ENV PYTHONUNBUFFERED 1
+# コンテナ内での作業ディレクトリ
+WORKDIR /app
+# 依存関係ファイルのコピーとインストール
+COPY api/requirements.txt .
+# requirements.txtをコンテナ内にコピーし、必要なパッケージをインストール
+RUN pip install --no-cache-dir -r requirements.txt
+#Djangoアプリケーションのコードをコンテナにコピー
+COPY api/ /app/
+# Djangの開発サーバーを起動するコマンドを指定
+CMD ["python", "manage,py", "runserver", "0.0.0.0.8000"]
+
