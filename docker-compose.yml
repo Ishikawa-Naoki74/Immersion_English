@@ -1,17 +1,49 @@
-version: '3.8'
-service:
- api:
-  build: ./api
-  volumes:
-   - ./api:/app
-  ports:
-   - "8000:8000"
-  environment:
-   - DEBUG=1 # Djangoのデバッグモードを有効にする
- view:
-  build : ./view
-  volumes: 
-   - ./view:/app
-   - /app/node_modules
-  ports:
-   - "8080:8080" 
+version: "3"
+services:
+  api:
+    container_name: Django_api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/code
+    depends_on:
+      - mysql-db
+
+  mysql-db:
+    image: mysql:8
+    container_name: mysql-db
+    platform: linux/amd64
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --transaction-isolation=READ-COMMITTED
+      --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 4bbH5274A
+      MYSQL_DATABASE: asakatu_habit_db
+      MYSQL_USER: Naoki74hub
+      MYSQL_PASSWORD: asakatuhh34tt
+      TZ: Asia/Tokyo
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - 53306:3306 
+
+  view:
+    container_name: Vue-view
+    build:
+      context: ./view
+      dockerfile: Dockerfile
+    command: npm run dev
+    ports: 
+      - 80:80
+    depends_on:
+      - api
+
+volumes:
+  mysql-data:
