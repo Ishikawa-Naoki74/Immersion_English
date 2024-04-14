@@ -1,15 +1,16 @@
+# TODO DjangoにMySQLの環境変数を設定
 version: "3"
 services:
   api:
-    container_name: Django_api
+    container_name: django_api
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./dockerfiles/django/dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     ports:
       - 8000:8000
     volumes:
-      - .:/code
+      - ./api:/code
     depends_on:
       - mysql-db
 
@@ -31,17 +32,24 @@ services:
       TZ: Asia/Tokyo
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./db/conf:/etc/mysql/conf.d/:ro
+      - ./db/logs:/var/log/mysql
     ports:
       - 53306:3306 
 
   view:
-    container_name: Vue-view
+    container_name: vue-view
     build:
-      context: ./view
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./dockerfiles/vue-docker/dockerfile
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     command: npm run dev
+    tty: true
     ports: 
       - 80:80
+    volumes:
+      - ./view:/code
     depends_on:
       - api
 
