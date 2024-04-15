@@ -1,3 +1,4 @@
+# TODO Dockerfileの軽量化
 FROM node:lts-alpine as build-stage
 WORKDIR /code
 # node.js の環境変数を定義する
