@@ -13,9 +13,9 @@ const firebaseConfig = {
   storageBucket: "immersion-english.appspot.com",
   messagingSenderId: "704525329697",
   appId: "1:704525329697:web:524ef51e134540817b8a60",
-  measurementId: "G-V1LKWEB2CC"
+  measurementId: "G-V1LKWEB2CC",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// const analytics = getAnalytics(app);
