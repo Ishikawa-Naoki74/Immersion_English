@@ -13,21 +13,23 @@ services:
       - ./api:/code
     depends_on:
       - mysql-db
+    command: ["./wait-for-it.sh","mysql-db:53306", "--", "python3", "manage.py", "runserver", "0.0.0.0:8000"]
 
   mysql-db:
     image: mysql:8
     container_name: mysql-db
     platform: linux/amd64
-    command: --character-set-server=utf8mb4
+    command:
+      --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --transaction-isolation=READ-COMMITTED
-      --default-authentication-plugin=mysql_native_password
+      # --default-authentication-plugin=mysql_native_password
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 4bbH5274A
-      MYSQL_DATABASE: asakatu_habit_db
+      MYSQL_DATABASE: immersion-english
       MYSQL_USER: Naoki74hub
-      MYSQL_PASSWORD: asakatuhh34tt
+      MYSQL_PASSWORD: 67HHa4ABC2j
       TZ: Asia/Tokyo
     volumes:
       - mysql-data:/var/lib/mysql
