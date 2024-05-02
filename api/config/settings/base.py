@@ -11,25 +11,27 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import environ
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-
+# .envファイルを読み込む
+env = environ.Env(DEBUG=(bool, False))
+env.read_env(os.path.join(BASE_DIR, ".env"))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
+# TODO development.pyに書くべき？
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-&%-to!$yr@a=a@6o_mgx^-zz&ior3m(#3&7l+1qo0nkt=gmrn9"
-
+SECRET_KEY = env("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 
 # Application definition
-
+# TODO CORSheaders追加
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -38,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "immersion_english",
 ]
 
 MIDDLEWARE = [
