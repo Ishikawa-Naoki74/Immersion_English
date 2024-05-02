@@ -3,4 +3,9 @@
 .vscode
 node_modules
 dist
-__pycache__
+.env
+__pycache_
+
+.DS_Store
+node_modules
+/dist
