@@ -1,32 +1,46 @@
 <template>
-  <div class="login-container">
-    <h1>Login</h1>
-    <input v-model="email" type="email" placeholder="Enter your email" />
+  <div>
+    <h1>ログイン</h1>
+    <input
+      v-model="email"
+      type="email"
+      placeholder="メールアドレスを入力してください"
+    />
     <input
       v-model="password"
       type="password"
-      placeholder="Enter your password"
+      placeholder="パスワードを入力してくさださい"
     />
-    <button @click="login">Login</button>
+    <p>
+      パスワードを忘れた方はこちら<router-link to="password-reset"
+        >パスワード再設定</router-link
+      >
+    </p>
+    <button @click="login">ログイン</button>
+    <p>
+      アカウントをお持ちではありませんか？<router-link to="/register"
+        >アカウント登録</router-link
+      >
+    </p>
   </div>
 </template>
 
 <script>
-import { auth } from "../firebase/config";
+import { auth } from '../firebase/config';
 
 export default {
-  name: "Login",
+  name: 'Login',
   data() {
     return {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     };
   },
   methods: {
     async login() {
       try {
         await auth.signInWithEmailAndPassword(this.email, this.password);
-        this.$router.push("/home"); // Redirect to home after login
+        this.$router.push('/home'); // Redirect to home after login
       } catch (error) {
         alert(error.message);
       }
@@ -34,12 +48,4 @@ export default {
   },
 };
 </script>
-
-<style>
-.login-container {
-  max-width: 300px;
-  margin: auto;
-  padding: 20px;
-  text-align: center;
-}
-</style>
+<style></style>
