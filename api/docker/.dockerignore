@@ -1,5 +1,5 @@
+# docker secretなどを使って、.envファイルを安全にDocker上にコピー
 .dockerignore
-.env
 .git
 .gitignore
 .vs
