@@ -4,8 +4,8 @@
 node_modules
 dist
 .env
-__pycache_
-firebase/*
+__pycache__
+view/src/firebase/*
 mysql.env
 .DS_Store
 node_modules
