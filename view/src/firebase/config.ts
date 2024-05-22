@@ -1,11 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+import { getAuth } from "firebase/auth";
+// firebaseの初期化
 const firebaseConfig = {
   apiKey: "AIzaSyAzU5-KntGGo6FEQ0Ejqh4vle6wiIJ2AJA",
   authDomain: "immersion-english.firebaseapp.com",
@@ -16,6 +12,7 @@ const firebaseConfig = {
   measurementId: "G-V1LKWEB2CC",
 };
 
-// Initialize Firebase
+// firebaseアプリ初期化
 const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
+// 認証サービスを初期化してエクスポート
+export const auth = getAuth(app);

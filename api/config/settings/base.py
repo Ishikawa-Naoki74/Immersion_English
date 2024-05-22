@@ -31,7 +31,6 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 
 # Application definition
-# TODO CORSheaders追加
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
