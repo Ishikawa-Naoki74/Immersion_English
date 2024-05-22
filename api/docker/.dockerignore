@@ -3,6 +3,9 @@
 .git
 .gitignore
 .vs
+.env
+mysql.env
 .vscode
 __pycache__
 **/node_modules
+firebase-adminsdk.json
