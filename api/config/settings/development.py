@@ -1,4 +1,8 @@
 from .base import *
+# firebase admin SDKの初期化
+cred = credentials.Certificate(os.path.join(BASE_DIR, "config/firebase/firebase-adminsdk.json"))
+firebase_admin.initialize_app(cred)
+
 # 開発環境の設定情報
 DATABASES = {
   "default": {
