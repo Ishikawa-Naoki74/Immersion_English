@@ -1,15 +1,8 @@
 <template>
+  <p>あなたに最高の体験を</p>
   <Register />
 </template>
 
-<script lang="ts">
-import Register from "../components/organisms/Register";
-
-// Components
-export default {
-  name: "RegisterView",
-  components: {
-    Register,
-  },
-};
+<script setup lang="ts">
+import Register from '../components/organisms/Register.vue';
 </script>
