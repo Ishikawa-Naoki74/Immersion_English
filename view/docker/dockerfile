@@ -1,5 +1,6 @@
 # TODO Dockerfileの軽量化
 FROM node:lts-alpine as build-stage
+RUN npm install -g @quasar/cli
 WORKDIR /code/
 # ENV NODE_ENV=development
 COPY package*.json .
@@ -9,6 +10,6 @@ RUN npm run build
 
 # nginxの実行環境をインストール
 FROM nginx:stable-alpine as production-stage
-COPY --from=build-stage /code/dist/ /usr/share/nginx/html
-EXPOSE 3000
+COPY --from=build-stage /code/dist/spa /usr/share/nginx/html
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

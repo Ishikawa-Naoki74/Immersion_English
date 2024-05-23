@@ -6,7 +6,7 @@
     <p>パスワードを忘れた方はこちら<router-link to="/password-reset">パスワード再設定</router-link></p>
     <p><button @click="login">ログイン</button></p>
     <p>アカウントをお持ちではありませんか？<router-link to="/register">アカウント登録</router-link></p>
-    <p><button @click="loginWithGoogle">Googleでログイン</button></p> 
+    <p><button @click="loginWithGoogle">Googleでログイン</button></p>
   </div>
 </template>
 
@@ -59,7 +59,7 @@ const sendTokenToServer = async (token: string) => {
     },
     {
       headers: {
-        "Content-Type": "application/json" 
+        "Content-Type": "application/json"
       }
     });
     console.log("sended Token to server!!");
