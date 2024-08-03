@@ -8,12 +8,25 @@ from drf_spectacular.views import (
 # プロジェクト全体の設定
 urlpatterns = [
     path("admin/", admin.site.urls),
+    
     # localhost/8000/api/schema にアクセスするとテキストファイルをダウンロードできる
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    
     # SwaggerUIの設定→localhost/8000/api/docs にアクセスするとSwaggerUIが表示されるよう設定
-    path("api/docs", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    
     # Redocの設定→localhost/8000/api/redoc にアクセスするとRedocが表示されるよう設定
-    path("api/redoc", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    
     path("api/users/", include("apps.users.urls")),
+
+    # settings for firebase authentication
+    path('api/firebase/', include('apps.users.urls')),
+    
+    # youtube data api
+    path('api/youtube/', include('apps.youtube_api.urls')),
+
+    # channel_decks api
+    path('api/', include('apps.channel_decks.urls')),
 ]
 # TODO extend_schemaでドキュメンテーションの追加設定

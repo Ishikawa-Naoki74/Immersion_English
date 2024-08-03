@@ -1,5 +1,4 @@
 # TODO DjangoにMySQLの環境変数を設定
-version: '3'
 services:
   api:
     container_name: django_api
@@ -48,10 +47,10 @@ services:
       target: build-stage # 開発ステージをターゲットとして指定
     environment:
       - CHOKIDAR_USEPOLLING=true
-    command: npm run serve # 開発コマンドの実行  
+    command: quasar dev # 開発コマンドの実行  
     tty: true
     ports:
-      - 3000:3000
+      - 3000:8080
     volumes:
       - ./view:/code/
     depends_on:
