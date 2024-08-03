@@ -11,3 +11,4 @@ mysql.env
 node_modules
 /dist
 firebase-adminsdk.json
+.quasar/

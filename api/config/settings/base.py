@@ -5,7 +5,16 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# firebase-adminsdk.json ファイルのパスを指定
+cred_path = BASE_DIR / "firebase/firebase-adminsdk.json"
+
+# firebase admin SDKの初期化
+cred = credentials.Certificate(str(cred_path))
+firebase_admin.initialize_app(cred)
+
 # read .envfile
 env = environ.Env(DEBUG=(bool, False))
 env.read_env(os.path.join(BASE_DIR, ".env"))
@@ -17,7 +26,7 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
-# Youtube Data API Key
+# Youtube Data APi Key
 YOUTUBE_DATA_API_KEY = env("YOUTUBE_DATA_API_KEY")
 
 # Application definition
@@ -29,10 +38,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "apps.users",
-    "apps.channels",
+    "apps.channel_decks",
     "apps.videos",
-    "apps.decks",
-    "apps.cards",
+    "apps.youtube_api",
     "rest_framework",
     "drf_spectacular",
     "corsheaders",

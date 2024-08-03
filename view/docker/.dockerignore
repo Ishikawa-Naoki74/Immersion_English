@@ -1,8 +1,19 @@
+# ビルド成果物
+dist
+build
+
+# ログファイル
+*.log
+
+# OS生成ファイル
+.DS_Store
+
 .dockerignore
 .env
 .git
 .gitignore
 .vs
 .vscode
-**/node_modules
+node_modules
 firebase
+

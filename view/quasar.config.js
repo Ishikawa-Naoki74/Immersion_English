@@ -13,8 +13,10 @@
 
 
 const { configure } = require('quasar/wrappers');
+const path = require('path');
 
 module.exports = configure(function (ctx) {
+  require('dotenv').config();
   return {
     // https://v2.quasar.dev/quasar-cli-webpack/supporting-ts
     supportTS: {
@@ -33,8 +35,9 @@ module.exports = configure(function (ctx) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-webpack/boot-files
     boot: [
-      
-      
+      'i18n',
+      'axios',
+      'firebase',
     ],
 
     // https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js#Property%3A-css
@@ -58,8 +61,18 @@ module.exports = configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js#Property%3A-build
     build: {
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
-
+      vueRouterMode: 'history', // available values: 'hash', 'history';
+      // .env variable settings
+      env: {
+        YOUTUBE_DATA_API_KEY: process.env.YOUTUBE_DATA_API_KEY
+      },
+      //TODO エイリアスできていないので修正
+      extendWebpack(cfg) {
+        cfg.resolve.alias = {
+          ...cfg.resolve.alias, // preserve existing aliases
+          '@': path.resolve(__dirname, 'src'),
+        }
+      },
       // transpile: false,
       // publicPath: '/',
 

@@ -1,7 +1,7 @@
 # TODO Dockerfileの軽量化
 FROM node:lts-alpine as build-stage
-RUN npm install -g @quasar/cli
 WORKDIR /code/
+RUN npm install -g @quasar/cli
 # ENV NODE_ENV=development
 COPY package*.json .
 RUN npm install

@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <q-item
     clickable
     tag="a"
@@ -36,4 +36,4 @@ withDefaults(defineProps<EssentialLinkProps>(), {
   link: '#',
   icon: '',
 });
-</script>
+</script> -->

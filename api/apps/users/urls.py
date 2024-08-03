@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
+from .views import  FirebaseLoginView
 
 urlpatterns = [
-    path("backend/", views.Backend.as_view()), 
+    path('login/', FirebaseLoginView.as_view(), name='firebase_login'),
 ]
