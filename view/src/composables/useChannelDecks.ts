@@ -7,7 +7,7 @@ export function useChannelDecks() {
 
   const getChannelDecks = async () => {
     try {
-      const response = await api.get('channels');
+      const response = await api.get('channel-decks/');
       if (response.status === 200 && response.data) {
         channelDecks.value = response.data;
       } else {

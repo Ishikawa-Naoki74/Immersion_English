@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "/Users/ishikawanaoki/.nvm/versions/node/v20.0.0/bin/node",
+      "args": [
+        "/Users/ishikawanaoki/.nvm/versions/node/v20.0.0/lib/node_modules/@supabase/mcp-server-supabase/dist/index.js"
+      ],
+      "env": {
+        "SUPABASE_URL": "https://uuwopjlfcfhldzpzvrah.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1d29wamxmY2ZobGR6cHp2cmFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0NDk4OTAsImV4cCI6MjA2ODAyNTg5MH0.CXeHIPbDpOFPtPbCZJerV9Qg6Vt1uddjux96vGzuUxU"
+      }
+    }
+  }
+}

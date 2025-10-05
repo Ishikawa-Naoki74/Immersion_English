@@ -21,7 +21,7 @@
       <tbody :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-3'">
         <tr v-for="channelDeck in channelDecks" :key="channelDeck.channel_id">
           <td class="text-left">
-          <router-link to="/video-decks">
+          <router-link :to="{ name: 'video-decks', query: { channel_id: channelDeck.channel_id } }">
             <img :src='channelDeck.channel_icon_url' class="channel-icon">
           </router-link>
         </td>
@@ -29,7 +29,7 @@
           <td class="text-left">{{ channelDeck.total_new_cards }}</td>
           <td class="text-left">{{ channelDeck.total_learning_cards }}</td>
           <td class="text-left">{{ channelDeck.total_review_cards }}</td>
-            <q-btn @click="getChannelVideos(channelDeck.uploads_playlist_id)" label="動画を追加" color="primary" />
+            <q-btn @click="getChannelVideos(channelDeck.uploads_playlist_id, channelDeck.channel_id)" label="動画を追加" color="primary" />
         </tr>
       </tbody>
     </q-markup-table>
@@ -44,8 +44,8 @@ import { useChannelDecks } from '../composables/useChannelDecks';
 const router = useRouter()
 const { channelDecks, getChannelDecks } = useChannelDecks();
 
-const getChannelVideos = (uploadsPlaylistId: string) => {
-  router.push({ name: 'channel-videos', query: { playlist_id:  uploadsPlaylistId }})
+const getChannelVideos = (uploadsPlaylistId: string, channelId: string) => {
+  router.push({ name: 'channel-videos', query: { playlist_id: uploadsPlaylistId, channel_id: channelId }})
  }
 
 onMounted(async () => {

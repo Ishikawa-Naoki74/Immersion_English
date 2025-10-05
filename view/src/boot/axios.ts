@@ -16,7 +16,7 @@ declare module '@vue/runtime-core' {
 // for each client)
 const api = axios.create({ baseURL: 'http://localhost:8000/api/',
   withCredentials: false,
-  timeout: 5000,
+  timeout: 300000, // 5分に増加（Whisper処理用）
   headers: {
     Accept:'application/json',
     'Content-Type': 'application/json'

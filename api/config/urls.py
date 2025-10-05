@@ -28,5 +28,8 @@ urlpatterns = [
 
     # channel_decks api
     path('api/', include('apps.channel_decks.urls')),
+    
+    # videos api
+    path('api/', include('apps.videos.urls')),
 ]
 # TODO extend_schemaでドキュメンテーションの追加設定

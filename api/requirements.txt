@@ -1,8 +1,11 @@
 Django==5.0
 djangorestframework==3.14.0
-mysqlclient==2.2.4
 django-environ==0.11.2
 drf-spectacular==0.23.1
 pillow==10.3.0
-firebase-admin==6.5.0
 django-cors-headers==4.3.1
+google-api-python-client==2.44.0
+psycopg2-binary==2.9.9
+google-generativeai==0.8.5
+pytubefix==9.5.1
+pydub==0.25.1

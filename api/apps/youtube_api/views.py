@@ -6,11 +6,21 @@ from .services.youtube_service import YoutubeService
 # channel search view
 class ChannelSearchView(APIView):
   def get(self, request):
-    search_query = request.GET.get('search_query', '')
-    service = YoutubeService()
-    channel_details = service.search_channels(search_query)
-    
-    return Response(channel_details)
+    try:
+      search_query = request.GET.get('search_query', '')
+      
+      if not search_query.strip():
+        return Response([], status=status.HTTP_200_OK)
+      
+      service = YoutubeService()
+      channel_details = service.search_channels(search_query)
+      
+      return Response(channel_details, status=status.HTTP_200_OK)
+    except Exception as e:
+      return Response(
+        {'error': 'Failed to search channels', 'details': str(e)}, 
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+      )
   
 # channel video view
 class ChannelVideosView(APIView):

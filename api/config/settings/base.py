@@ -2,18 +2,11 @@ from pathlib import Path
 import environ
 import os
 
-import firebase_admin
-from firebase_admin import credentials
+# import firebase_admin
+# from firebase_admin import credentials
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-# firebase-adminsdk.json ファイルのパスを指定
-cred_path = BASE_DIR / "firebase/firebase-adminsdk.json"
-
-# firebase admin SDKの初期化
-cred = credentials.Certificate(str(cred_path))
-firebase_admin.initialize_app(cred)
 
 # read .envfile
 env = environ.Env(DEBUG=(bool, False))
@@ -28,6 +21,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 # Youtube Data APi Key
 YOUTUBE_DATA_API_KEY = env("YOUTUBE_DATA_API_KEY")
+
+# Gemini API Key
+GEMINI_API_KEY = env("GEMINI_API_KEY")
 
 # Application definition
 INSTALLED_APPS = [
@@ -136,5 +132,42 @@ SPECTACULAR_SETTINGS = {
 
 # allow origin
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
     "http://localhost:3000",
+    "http://localhost:9000",
+    "http://localhost:9001",
 ]
+
+# より柔軟なCORS設定（開発環境用）
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # DEBUG=Trueの時のみすべてのオリジンを許可
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Cache configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}

@@ -9,40 +9,71 @@ class YoutubeService:
   
   # get channel ids
   def get_channel_ids(self, search_query, max_result=10):
-    channel_ids_request = self.youtube.search().list(
-      q=search_query,
-      type='channel',
-      part='snippet',
-      maxResults = max_result
-    )
-    response = channel_ids_request.execute()
-    return [item['id']['channelId'] for item in response.get('items', [])]
+    try:
+      channel_ids_request = self.youtube.search().list(
+        q=search_query,
+        type='channel',
+        part='snippet',
+        maxResults = max_result
+      )
+      response = channel_ids_request.execute()
+      return [item['id']['channelId'] for item in response.get('items', [])]
+    except errors.HttpError as e:
+      print(f"YouTube API error in get_channel_ids: {e}")
+      return []
+    except Exception as e:
+      print(f"General error in get_channel_ids: {e}")
+      return []
 
   # get channel info
   def get_channel_details(self, channel_ids):
-    if isinstance(channel_ids, list):
-      channel_ids = ','.join(channel_ids)
-    channel_details_request = self.youtube.channels().list(
-      part='snippet,statistics,contentDetails',
-      id=channel_ids
-    )
-    response = channel_details_request.execute()
-    return [
-      {
-        'id': item['id'],
-        'title': item['snippet']['title'],
-        'thumbnail': item['snippet']['thumbnails']['default']['url'],
-        'subscriberCount': item['statistics']['subscriberCount'],  
-        'playlistId': item['contentDetails']['relatedPlaylists']['uploads']
-      }
-      for item in response.get('items', [])
-    ]
+    try:
+      if not channel_ids:
+        return []
+      
+      if isinstance(channel_ids, list):
+        channel_ids = ','.join(channel_ids)
+      
+      channel_details_request = self.youtube.channels().list(
+        part='snippet,statistics,contentDetails',
+        id=channel_ids
+      )
+      response = channel_details_request.execute()
+      return [
+        {
+          'id': item['id'],
+          'title': item['snippet']['title'],
+          'thumbnail': item['snippet']['thumbnails']['default']['url'],
+          'subscriberCount': item['statistics']['subscriberCount'],  
+          'playlistId': item['contentDetails']['relatedPlaylists']['uploads']
+        }
+        for item in response.get('items', [])
+      ]
+    except errors.HttpError as e:
+      print(f"YouTube API error in get_channel_details: {e}")
+      return []
+    except Exception as e:
+      print(f"General error in get_channel_details: {e}")
+      return []
   
   # search channels
   def search_channels(self, search_query, max_result=10):
-    channel_ids = self.get_channel_ids(search_query, max_result)
-    channel_details = self.get_channel_details(channel_ids)
-    return channel_details  
+    try:
+      if not search_query.strip():
+        return []
+      
+      channel_ids = self.get_channel_ids(search_query, max_result)
+      if not channel_ids:
+        return []
+      
+      channel_details = self.get_channel_details(channel_ids)
+      return channel_details
+    except errors.HttpError as e:
+      print(f"YouTube API error in search_channels: {e}")
+      return []
+    except Exception as e:
+      print(f"General error in search_channels: {e}")
+      return []  
   
   # get channel videos
   def get_channel_videos(self, playlist_id, page_token=None, per_page=50):

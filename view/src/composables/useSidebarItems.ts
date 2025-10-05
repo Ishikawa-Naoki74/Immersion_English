@@ -1,7 +1,10 @@
 import { ref } from 'vue';
 import { fabYoutube } from '@quasar/extras/fontawesome-v6';
+import { useChannelDecks } from './useChannelDecks';
 
 export function useSidebarItems() {
+  const { channelDecks } = useChannelDecks();
+  
   const sidebarItems = ref([
     {
       items: [
@@ -17,6 +20,10 @@ export function useSidebarItems() {
         { icon: 'watch_later', label: 'Watch later' },
         { icon: 'thumb_up_alt', label: 'Liked videos' },
       ]
+    },
+    {
+      type: 'channels',
+      items: []
     },
     {
       items: [
@@ -37,6 +44,7 @@ export function useSidebarItems() {
   ])
 
  return {
-  sidebarItems
+  sidebarItems,
+  channelDecks
  }
 }

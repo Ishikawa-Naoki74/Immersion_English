@@ -95,12 +95,17 @@
       :width="240"
     >
       <q-scroll-area class="fit">
-        <SidebarSection
-          v-for="(section, index) in sidebarItems"
-          :key="index"
-          :items="section.items"
-          :show-divider="index < sidebarItems.length - 1"
-        />
+        <template v-for="(section, index) in sidebarItems" :key="index">
+          <SidebarSection
+            v-if="section.type !== 'channels'"
+            :items="section.items"
+            :show-divider="index < sidebarItems.length - 1"
+          />
+          <ChannelList
+            v-else
+            :show-divider="index < sidebarItems.length - 1"
+          />
+        </template>
       </q-scroll-area>
     </q-drawer>
 
@@ -115,6 +120,7 @@ import { ref } from 'vue';
 import { fabYoutube } from '@quasar/extras/fontawesome-v6';
 import { useSearchChannels } from '../composables/useSearchChannels';
 import SidebarSection from 'src/components/organisms/SidebarSection.vue';
+import ChannelList from 'src/components/organisms/ChannelList.vue';
 import { useSidebarItems } from 'src/composables/useSidebarItems';
 
 const leftDrawerOpen = ref(false);

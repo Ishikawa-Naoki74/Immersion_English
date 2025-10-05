@@ -17,12 +17,22 @@
                 <p>{{ channel.playlistId }}</p>
               </q-card-section>
               <q-card-section class="flex flex-center">
-                <span
-                  :class="registeredChannels.has(channel.id) ? 'label bg-black text-white' : 'label bg-primary text-white'"
+                <q-btn
+                  :class="[
+                    'subscription-btn',
+                    registeredChannels.has(channel.id) ? 'registered' : 'unregistered'
+                  ]"
+                  :loading="loadingChannels.has(channel.id)"
                   @click="toggleRegistration(channel)"
+                  unelevated
+                  no-caps
                 >
+                  <q-icon
+                    :name="registeredChannels.has(channel.id) ? 'check' : 'add'"
+                    class="btn-icon"
+                  />
                   {{ registeredChannels.has(channel.id) ? '登録済み' : 'チャンネル登録' }}
-                </span>
+                </q-btn>
               </q-card-section>
             </q-card>
           </div>
@@ -40,9 +50,11 @@ import { useChannelsStore } from 'stores/channels-store';
 // TODO storeToRefに置き換える
 const channelsStore = useChannelsStore()
 const registeredChannels = ref<Set<string>>(new Set());
+const loadingChannels = ref<Set<string>>(new Set());
 
 const registerChannel = async (channel: any) => {
   //TODO JSON形式にしてバックエンドにデータ送信
+  loadingChannels.value.add(channel.id);
   try {
     const response = await api.post('channels/', {
       channel_id: channel.id,
@@ -56,18 +68,23 @@ const registerChannel = async (channel: any) => {
   } catch (error) {
     console.error('Error registering channel:', error);
     alert('チャンネルの登録に失敗しました。');
+  } finally {
+    loadingChannels.value.delete(channel.id);
   }
 }
 
 const unregisterChannel = async (channel: any) => {
+  loadingChannels.value.add(channel.id);
   try {
     //TODO将来的にparamsに変更
     const response = await api.delete(`channels/${channel.id}/`);
     if (response.status === 200) {
-      registeredChannels.value.delete(channel.id)}
+      registeredChannels.value.delete(channel.id);
+    }
   } catch (error) {
     console.error('Error unregisterd channel', error);
-  
+  } finally {
+    loadingChannels.value.delete(channel.id);
   }
 }
 const toggleRegistration = (channel: any) => {
@@ -114,6 +131,53 @@ onMounted(async () => {
 
 .selected-channel {
   border: 6px solid skyblue;
+}
+
+.subscription-btn {
+  min-width: 140px;
+  padding: 8px 16px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.subscription-btn.unregistered {
+  background-color: #1976d2;
+  color: white;
+}
+
+.subscription-btn.unregistered:hover {
+  background-color: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+}
+
+.subscription-btn.registered {
+  background-color: #4caf50;
+  color: white;
+}
+
+.subscription-btn.registered:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.subscription-btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  margin-right: 4px;
+  transition: transform 0.2s ease;
+}
+
+.subscription-btn:hover .btn-icon {
+  transform: scale(1.1);
+}
+
+.subscription-btn .q-spinner {
+  color: inherit;
 }
 </style>
 
