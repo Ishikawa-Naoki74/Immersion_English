@@ -1,7 +1,19 @@
 from rest_framework import serializers
 from .models import Videos
+from apps.channel_decks.serializers import ChannelDecksSerializer
 
 class VideosSerializer(serializers.ModelSerializer):
+    channel_info = ChannelDecksSerializer(source='channel', read_only=True)
+    channel_id = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = Videos
-        fields = '__all__'
+        fields = ['video_id', 'channel_id', 'channel_info', 'total_study_time',
+                  'total_new_cards', 'total_learning_cards', 'total_review_cards', 'created_at']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # channel_idを追加
+        if instance.channel:
+            representation['channel_id'] = instance.channel.channel_id
+        return representation

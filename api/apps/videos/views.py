@@ -22,7 +22,7 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 class VideosView(APIView):
     def post(self, request):
         video_id = request.data.get('video_id')
-        channel_id = request.data.get('channel_id', 'unknown')
+        channel_id = request.data.get('channel_id')
         total_study_time = request.data.get('total_study_time', 0)
         total_new_cards = request.data.get('total_new_cards', 0)
         total_learning_cards = request.data.get('total_learning_cards', 0)
@@ -33,12 +33,21 @@ class VideosView(APIView):
 
         # 動画が既に存在するかチェック
         if Videos.objects.filter(video_id=video_id).exists():
-            return Response({'error': 'Video already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Video already registered'}, status=status.HTTP_200_OK)
+
+        # チャンネルが存在するかチェック
+        channel = None
+        if channel_id:
+            from apps.channel_decks.models import Channeldecks
+            try:
+                channel = Channeldecks.objects.get(channel_id=channel_id)
+            except Channeldecks.DoesNotExist:
+                return Response({'error': 'Channel not found. Please register the channel first.'}, status=status.HTTP_404_NOT_FOUND)
 
         # 新しい動画を作成
         video = Videos.objects.create(
             video_id=video_id,
-            channel_id=channel_id,
+            channel=channel,
             total_study_time=total_study_time,
             total_new_cards=total_new_cards,
             total_learning_cards=total_learning_cards,
@@ -52,7 +61,7 @@ class VideosView(APIView):
         channel_id = request.GET.get('channel_id')
 
         if channel_id:
-            videos = Videos.objects.filter(channel_id=channel_id)
+            videos = Videos.objects.filter(channel__channel_id=channel_id)
         else:
             videos = Videos.objects.all()
 
