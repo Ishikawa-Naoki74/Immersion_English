@@ -8,8 +8,8 @@ from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Videos
-from .serializers import VideosSerializer
+from .models import Videos, Highlight
+from .serializers import VideosSerializer, HighlightSerializer
 import google.generativeai as genai
 
 # ロガーを設定
@@ -327,3 +327,230 @@ class YoutubeTranscriptView(APIView):
                     })
 
         return entries
+
+
+class HighlightView(APIView):
+    """
+    字幕ハイライト機能のCRUD API
+
+    POST: ハイライトを作成（意味と語源を自動生成）
+    GET: ハイライト一覧取得（video_idでフィルタ可能）
+    """
+
+    def post(self, request):
+        """
+        ハイライトを作成
+
+        リクエストボディ:
+        - video_id: 動画ID（必須）
+        - highlighted_text: ハイライトした部分（必須、自動入力される）
+        - timestamp: タイムスタンプ（秒）（必須）
+        - auto_generate: 意味と語源を自動生成するか（デフォルト: true）
+        """
+        video_id = request.data.get('video_id')
+        highlighted_text = request.data.get('highlighted_text')
+        timestamp = request.data.get('timestamp')
+        auto_generate = request.data.get('auto_generate', True)
+
+        # バリデーション
+        if not video_id or not highlighted_text or timestamp is None:
+            return Response({
+                'error': 'video_id, highlighted_text, timestamp are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 動画が存在するかチェック
+        try:
+            video = Videos.objects.get(video_id=video_id)
+        except Videos.DoesNotExist:
+            return Response({
+                'error': 'Video not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # 意味と語源を自動生成
+        meaning_japanese = request.data.get('meaning_japanese')
+        etymology = request.data.get('etymology')
+        image_url = request.data.get('image_url')
+
+        if auto_generate and not (meaning_japanese and etymology):
+            try:
+                logger.info(f"Gemini APIで意味と語源を生成中: {highlighted_text}")
+                generated_data = self._generate_meaning_and_etymology(highlighted_text)
+
+                if not meaning_japanese:
+                    meaning_japanese = generated_data.get('meaning_japanese')
+                if not etymology:
+                    etymology = generated_data.get('etymology')
+                if not image_url:
+                    image_url = generated_data.get('image_url')
+
+                logger.info(f"生成完了: 意味={len(meaning_japanese or '')}文字, 語源={len(etymology or '')}文字")
+            except Exception as e:
+                logger.error(f"自動生成エラー: {str(e)}")
+                # エラーが発生してもハイライトは保存する
+
+        # ハイライトを作成
+        highlight = Highlight.objects.create(
+            video=video,
+            highlighted_text=highlighted_text,
+            timestamp=timestamp,
+            meaning_japanese=meaning_japanese,
+            etymology=etymology,
+            image_url=image_url
+        )
+
+        serializer = HighlightSerializer(highlight)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        """
+        ハイライト一覧を取得
+
+        クエリパラメータ:
+        - video_id: 動画IDでフィルタ（オプション）
+        """
+        video_id = request.GET.get('video_id')
+
+        if video_id:
+            highlights = Highlight.objects.filter(video__video_id=video_id)
+        else:
+            highlights = Highlight.objects.all()
+
+        serializer = HighlightSerializer(highlights, many=True)
+        return Response(serializer.data)
+
+    def _generate_meaning_and_etymology(self, highlighted_text):
+        """
+        Gemini APIを使って意味と語源を自動生成
+
+        Args:
+            highlighted_text: ハイライトされたテキスト（単語または英文）
+
+        Returns:
+            dict: {
+                'meaning_japanese': '日本語の意味',
+                'etymology': '語源の説明',
+                'image_url': 'イメージ画像のURL（今後実装）'
+            }
+        """
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+
+        prompt = f"""
+以下の英語の単語または英文について、日本語で詳しく説明してください。
+
+【テキスト】
+{highlighted_text}
+
+【指示】
+1. **日本語の意味**: この単語または英文の意味を日本語で分かりやすく説明してください。複数の意味がある場合は主要なものを列挙してください。
+2. **語源**: この単語の語源（etymology）を日本語で説明してください。ラテン語、ギリシャ語、古英語などの起源や、どのように現在の形になったかを説明してください。
+
+【出力形式】
+以下のJSON形式で出力してください（JSONコードブロックは不要、プレーンテキストのJSONのみ）:
+{{
+  "meaning_japanese": "日本語の意味の説明",
+  "etymology": "語源の説明"
+}}
+
+※説明や前置きは不要です。JSONのみを返してください。
+"""
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+
+        # JSONパース
+        import json
+        # コードブロックを削除
+        if response_text.startswith('```'):
+            response_text = response_text.split('```')[1]
+            if response_text.startswith('json'):
+                response_text = response_text[4:]
+
+        response_text = response_text.strip()
+
+        try:
+            data = json.loads(response_text)
+            return {
+                'meaning_japanese': data.get('meaning_japanese', ''),
+                'etymology': data.get('etymology', ''),
+                'image_url': None  # 今後実装: 画像生成APIを使用
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析エラー: {e}, レスポンス: {response_text}")
+            # フォールバック: テキストをそのまま使用
+            return {
+                'meaning_japanese': response_text[:500],
+                'etymology': '',
+                'image_url': None
+            }
+
+
+class HighlightDetailView(APIView):
+    """
+    個別ハイライトの詳細・更新・削除
+
+    GET: ハイライト詳細取得
+    PUT: ハイライト更新
+    PATCH: ハイライト部分更新
+    DELETE: ハイライト削除
+    """
+
+    def get(self, request, highlight_id):
+        """ハイライト詳細を取得"""
+        try:
+            highlight = Highlight.objects.get(id=highlight_id)
+            serializer = HighlightSerializer(highlight)
+            return Response(serializer.data)
+        except Highlight.DoesNotExist:
+            return Response({
+                'error': 'Highlight not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, highlight_id):
+        """ハイライトを更新"""
+        try:
+            highlight = Highlight.objects.get(id=highlight_id)
+        except Highlight.DoesNotExist:
+            return Response({
+                'error': 'Highlight not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # 更新可能なフィールドのみを更新
+        highlight.highlighted_text = request.data.get('highlighted_text', highlight.highlighted_text)
+        highlight.timestamp = request.data.get('timestamp', highlight.timestamp)
+        highlight.meaning_japanese = request.data.get('meaning_japanese', highlight.meaning_japanese)
+        highlight.etymology = request.data.get('etymology', highlight.etymology)
+        highlight.image_url = request.data.get('image_url', highlight.image_url)
+        highlight.save()
+
+        serializer = HighlightSerializer(highlight)
+        return Response(serializer.data)
+
+    def patch(self, request, highlight_id):
+        """ハイライトを部分更新"""
+        try:
+            highlight = Highlight.objects.get(id=highlight_id)
+        except Highlight.DoesNotExist:
+            return Response({
+                'error': 'Highlight not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # 送信されたフィールドのみを更新
+        for field in ['highlighted_text', 'timestamp', 'meaning_japanese', 'etymology', 'image_url']:
+            if field in request.data:
+                setattr(highlight, field, request.data[field])
+
+        highlight.save()
+
+        serializer = HighlightSerializer(highlight)
+        return Response(serializer.data)
+
+    def delete(self, request, highlight_id):
+        """ハイライトを削除"""
+        try:
+            highlight = Highlight.objects.get(id=highlight_id)
+            highlight.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Highlight.DoesNotExist:
+            return Response({
+                'error': 'Highlight not found'
+            }, status=status.HTTP_404_NOT_FOUND)

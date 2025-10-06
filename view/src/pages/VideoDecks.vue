@@ -3,7 +3,7 @@
     <!-- 動画選択画面 -->
     <div v-if="!selectedVideo">
       <div class="row justify-between items-center q-mb-md">
-        <h2>動画デッキ ({{ registeredVideos.length }}個の動画)</h2>
+        <h2>動画デッキ</h2>
         <div class="row q-gutter-sm">
           <q-btn 
             flat 
@@ -36,9 +36,6 @@
             <q-card-section>
               <div class="text-subtitle2 text-weight-medium">
                 動画ID: {{ video.video_id }}
-              </div>
-              <div class="text-body2 text-grey-6 q-mt-xs">
-                チャンネル: {{ video.channel_id }}
               </div>
               <div class="text-body2 text-grey-6 q-mt-sm">
                 学習時間: {{ video.total_study_time }}分
@@ -97,9 +94,10 @@
         </div>
       </div>
 
-      <!-- 動画プレイヤー（小さいサイズ） -->
-      <div class="video-container-small q-mb-md">
+      <!-- 動画プレイヤー -->
+      <div class="video-container q-mb-md">
         <iframe
+          ref="playerIframe"
           :src="`https://www.youtube.com/embed/${selectedVideo.video_id}?enablejsapi=1&modestbranding=1&rel=0`"
           frameborder="0"
           allowfullscreen
@@ -109,22 +107,231 @@
         ></iframe>
       </div>
 
-      <!-- 動画情報（折りたたみ可能） -->
-      <div class="video-info q-mt-md">
-        <q-card>
-          <q-card-section class="q-pa-sm">
-            <div class="row justify-between items-center cursor-pointer" @click="showVideoInfo = !showVideoInfo">
-              <div class="text-subtitle1 text-weight-medium">動画情報</div>
-              <q-icon
-                :name="showVideoInfo ? 'expand_less' : 'expand_more'"
-                size="sm"
-              />
+      <!-- 字幕リスト（ハイライト & クリックでシーク） -->
+      <div v-if="displaySubtitles.length" class="subtitle-list q-mb-md">
+        <q-card flat bordered class="q-pa-sm">
+          <div class="text-caption text-grey-7 q-mb-xs">
+            字幕（クリックでその時間へ移動、テキスト選択でハイライト保存）
+          </div>
+          <div class="subtitle-scroll">
+            <div
+              v-for="(sub, idx) in displaySubtitles"
+              :key="idx"
+              class="subtitle-row"
+              :class="{ 'is-current': isCurrentSubtitle(sub) }"
+              @click="seekTo(sub.start)"
+              @mouseup="handleTextSelection($event, sub)"
+            >
+              <span class="time">{{ formatTime(sub.start) }}</span>
+              <span class="text" :data-start="sub.start">{{ sub.text }}</span>
+            </div>
+          </div>
+        </q-card>
+      </div>
+
+      <!-- ハイライト保存ダイアログ -->
+      <q-dialog v-model="showHighlightDialog" persistent>
+        <q-card style="min-width: 400px">
+          <q-card-section>
+            <div class="text-h6">ハイライトを保存</div>
+          </q-card-section>
+
+          <q-card-section class="q-pt-none">
+            <div class="q-mb-md">
+              <div class="text-caption text-grey-7">選択したテキスト</div>
+              <div class="text-body1 text-weight-medium q-pa-sm bg-grey-2 rounded-borders">
+                {{ highlightForm.highlighted_text }}
+              </div>
+            </div>
+
+            <div class="q-mb-md">
+              <div class="text-caption text-grey-7">タイムスタンプ</div>
+              <div class="text-body2">{{ formatTime(highlightForm.timestamp) }}</div>
+            </div>
+
+            <q-checkbox
+              v-model="highlightForm.auto_generate"
+              label="意味と語源を自動生成する（Gemini AI）"
+              class="q-mb-md"
+            />
+
+            <div v-if="isGenerating" class="text-center q-py-md">
+              <q-spinner color="primary" size="40px" />
+              <div class="text-caption q-mt-sm">AI生成中...</div>
+            </div>
+
+            <q-input
+              v-model="highlightForm.meaning_japanese"
+              label="日本語の意味"
+              type="textarea"
+              rows="3"
+              filled
+              class="q-mb-md"
+              hint="AIが自動生成するか、手動で入力してください"
+            />
+
+            <q-input
+              v-model="highlightForm.etymology"
+              label="語源"
+              type="textarea"
+              rows="2"
+              filled
+              class="q-mb-md"
+              hint="AIが自動生成するか、手動で入力してください"
+            />
+
+            <div class="q-mb-md">
+              <div class="text-caption text-grey-7 q-mb-xs">イメージ画像</div>
+              <q-file
+                v-model="imageFile"
+                label="画像を選択"
+                filled
+                accept="image/*"
+                @update:model-value="handleImageUpload"
+                class="q-mb-sm"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="image" />
+                </template>
+              </q-file>
+
+              <div v-if="highlightForm.image_url" class="q-mt-sm">
+                <div class="text-caption q-mb-xs">プレビュー:</div>
+                <q-img
+                  :src="highlightForm.image_url"
+                  style="max-width: 200px; border-radius: 8px;"
+                  fit="contain"
+                />
+                <q-btn
+                  flat
+                  dense
+                  size="sm"
+                  color="negative"
+                  label="画像を削除"
+                  @click="removeImage"
+                  class="q-mt-xs"
+                />
+              </div>
             </div>
           </q-card-section>
 
-          <q-separator v-if="showVideoInfo" />
+          <q-card-actions align="right">
+            <q-btn flat label="キャンセル" color="grey" @click="closeHighlightDialog" />
+            <q-btn
+              flat
+              label="保存"
+              color="primary"
+              :loading="isSaving"
+              @click="saveHighlight"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
-          <q-card-section v-if="showVideoInfo">
+      <!-- 保存済みハイライト数表示 -->
+      <div v-if="highlights.length" class="q-mb-md">
+        <q-btn
+          flat
+          color="primary"
+          :label="`保存済みハイライト: ${highlights.length}件`"
+          icon="bookmark"
+          @click="showHighlightListDialog = true"
+        />
+      </div>
+
+      <!-- ハイライト一覧ダイアログ -->
+      <q-dialog v-model="showHighlightListDialog" maximized>
+        <q-card>
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6">保存済みハイライト ({{ highlights.length }}件)</div>
+            <q-space />
+            <q-btn icon="close" flat round dense @click="showHighlightListDialog = false" />
+          </q-card-section>
+
+          <q-card-section class="q-pt-sm">
+            <div class="highlights-grid">
+              <q-card
+                v-for="highlight in highlights"
+                :key="highlight.id"
+                class="highlight-card"
+                flat
+                bordered
+              >
+                <q-card-section class="q-pa-sm">
+                  <div class="row items-start justify-between">
+                    <div class="col">
+                      <div class="text-weight-bold text-body1 ellipsis-2-lines">
+                        {{ highlight.highlighted_text }}
+                      </div>
+                      <div class="text-caption text-grey-7 q-mt-xs">
+                        <q-icon name="schedule" size="xs" /> {{ formatTime(highlight.timestamp) }}
+                      </div>
+                    </div>
+                    <div class="col-auto q-ml-sm">
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        size="sm"
+                        icon="play_arrow"
+                        color="primary"
+                        @click="seekToAndClose(highlight.timestamp)"
+                      >
+                        <q-tooltip>再生</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+
+                  <div v-if="highlight.image_url" class="q-mt-sm">
+                    <img
+                      :src="highlight.image_url"
+                      class="highlight-image"
+                      @error="handleImageError"
+                    />
+                  </div>
+
+                  <div v-if="highlight.meaning_japanese" class="q-mt-sm">
+                    <div class="text-caption text-weight-bold">意味:</div>
+                    <div class="text-caption ellipsis-3-lines">{{ highlight.meaning_japanese }}</div>
+                  </div>
+
+                  <div v-if="highlight.etymology" class="q-mt-sm">
+                    <div class="text-caption text-weight-bold">語源:</div>
+                    <div class="text-caption ellipsis-2-lines">{{ highlight.etymology }}</div>
+                  </div>
+
+                  <div class="row q-mt-sm q-gutter-xs">
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      icon="edit"
+                      color="orange"
+                      label="編集"
+                      @click="editHighlight(highlight)"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      icon="delete"
+                      color="negative"
+                      label="削除"
+                      @click="deleteHighlight(highlight.id!)"
+                    />
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </q-card-section>
+        </q-card>
+      </q-dialog>
+
+      <!-- 動画情報 -->
+      <div class="video-info q-mt-md">
+        <q-card>
+          <q-card-section>
+            <div class="text-h6 q-mb-sm">動画情報</div>
             <div class="text-body2 text-grey-6 q-mb-sm">
               動画ID: {{ selectedVideo.video_id }}
             </div>
@@ -148,119 +355,17 @@
           </q-card-section>
         </q-card>
       </div>
-
-      <!-- 字幕表示（常に表示） -->
-      <div class="subtitles-section q-mt-md">
-        <q-card>
-          <q-card-section>
-            <div class="row justify-between items-center q-mb-md">
-              <div class="text-h6">字幕</div>
-              <div class="row q-gutter-sm">
-                <q-btn 
-                  flat 
-                  :color="isLoadingSubtitles ? 'grey' : 'primary'"
-                  :loading="isLoadingSubtitles"
-                  :label="subtitles ? '字幕を再取得' : '字幕を取得'"
-                  @click="fetchSubtitles"
-                />
-                <q-select
-                  v-if="subtitles && Object.keys(subtitles).length > 0"
-                  v-model="selectedSubtitleLanguage"
-                  :options="subtitleLanguageOptions"
-                  label="言語"
-                  dense
-                  style="min-width: 100px"
-                />
-              </div>
-            </div>
-            
-            <div v-if="isLoadingSubtitles" class="text-center q-py-md">
-              <q-spinner size="30px" color="primary" />
-              <p class="text-body2 text-grey-6 q-mt-sm">字幕を取得中...</p>
-            </div>
-            
-            <div v-else-if="subtitles && Object.keys(subtitles).length > 0" class="subtitle-content">
-              <!-- 言語切り替えタブ -->
-              <div class="language-tabs q-mb-md">
-                <q-btn-toggle
-                  v-model="selectedSubtitleLanguage"
-                  :options="subtitleLanguageOptions.map(opt => ({ label: opt.label, value: opt.value }))"
-                  color="primary"
-                  text-color="primary"
-                  flat
-                  stretch
-                />
-              </div>
-              
-              <div v-if="getCurrentSubtitleData()" class="q-mb-sm">
-                <q-chip 
-                  :color="getSourceColor(getCurrentSubtitleData().source)"
-                  text-color="white"
-                  size="sm"
-                >
-                  {{ getSourceText(getCurrentSubtitleData().source) }}
-                  {{ selectedSubtitleLanguage === 'english' ? '英語' : selectedSubtitleLanguage === 'japanese' ? '日本語' : 'その他' }}
-                </q-chip>
-              </div>
-              
-              <div class="subtitle-text">
-                <div v-if="showDetailedSubtitles" class="subtitle-entries">
-                  <div 
-                    v-for="(entry, index) in getCurrentSubtitleData()?.transcript" 
-                    :key="index"
-                    class="subtitle-entry q-mb-xs"
-                  >
-                    <span class="time-stamp text-caption text-grey-6">
-                      {{ formatTime(entry.start) }} - {{ formatTime(entry.start + entry.duration) }}
-                    </span>
-                    <p class="subtitle-line q-ma-none q-ml-sm">{{ entry.text }}</p>
-                  </div>
-                </div>
-                <div v-else class="subtitle-full-text">
-                  {{ getCurrentSubtitleData()?.text }}
-                </div>
-              </div>
-              
-              <div class="row justify-between q-mt-md">
-                <q-btn
-                  flat
-                  size="sm"
-                  :label="showDetailedSubtitles ? '全文表示' : '詳細表示'"
-                  @click="showDetailedSubtitles = !showDetailedSubtitles"
-                />
-                <div class="text-caption text-grey-6">
-                  {{ getCurrentSubtitleData()?.transcript?.length || 0 }}個のエントリ
-                </div>
-              </div>
-            </div>
-            
-            <div v-else-if="subtitleError" class="text-center q-py-md">
-              <q-icon name="error" size="40px" color="negative" />
-              <p class="text-body2 text-negative q-mt-sm">{{ subtitleError }}</p>
-              <q-btn 
-                outline
-                color="primary"
-                label="再試行"
-                @click="fetchSubtitles"
-                class="q-mt-sm"
-              />
-            </div>
-            
-            <div v-else class="text-center q-py-md">
-              <q-icon name="subtitles" size="40px" color="grey-4" />
-              <p class="text-body2 text-grey-6 q-mt-sm">動画を選択すると自動的に字幕を取得します</p>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from 'boot/axios';
+import { SupabaseService } from 'src/services/supabaseService';
+import { HighlightService, type Highlight } from 'src/services/highlightService';
+import { Notify } from 'quasar';
 
 interface RegisteredVideo {
   video_id: string;
@@ -271,73 +376,195 @@ interface RegisteredVideo {
   created_at: string;
 }
 
+interface SubtitleEntry {
+  text: string;
+  start: number;   // 秒
+  duration: number; // 秒
+}
+
 const route = useRoute();
 const registeredVideos = ref<RegisteredVideo[]>([]);
 const isLoading = ref(false);
 const selectedVideo = ref<RegisteredVideo | null>(null);
 
 // 字幕関連の状態
-const subtitles = ref<any>(null);
-const isLoadingSubtitles = ref(false);
-const subtitleError = ref<string | null>(null);
-const selectedSubtitleLanguage = ref<string>('english');
-const showDetailedSubtitles = ref(false);
+const englishSubtitles = ref<SubtitleEntry[]>([]);
+const japaneseSubtitles = ref<SubtitleEntry[]>([]);
+const displaySubtitles = ref<SubtitleEntry[]>([]); // 表示用（今回は英語優先）
+const currentTimeSec = ref<number>(0);
+const playerIframe = ref<HTMLIFrameElement | null>(null);
+let timeTicker: number | null = null;
 
-// 動画情報の表示/非表示
-const showVideoInfo = ref(false);
+// ハイライト関連の状態
+const highlights = ref<Highlight[]>([]);
+const showHighlightDialog = ref(false);
+const showHighlightListDialog = ref(false);
+const isGenerating = ref(false);
+const isSaving = ref(false);
+const generatedData = ref(false);
+const imageFile = ref<File | null>(null);
+const editingHighlightId = ref<number | null>(null);
+const highlightForm = ref({
+  highlighted_text: '',
+  timestamp: 0,
+  meaning_japanese: '',
+  etymology: '',
+  image_url: '',
+  auto_generate: true,
+});
 
 const getRegisteredVideos = async (channelId?: string) => {
   isLoading.value = true;
   try {
-    console.log('Fetching registered videos for channel:', channelId);
-    
-    const response = await api.get('videos/');
-    console.log('API response:', response.data);
-    
-    if (response.status === 200) {
-      let videos = response.data;
-      
-      // Filter by channel_id if specified
-      if (channelId) {
-        videos = videos.filter((video: any) => video.channel_id === channelId);
-        console.log('Filtered videos for channel:', videos);
+    // Try Supabase first, fallback to API
+    try {
+      const supabaseVideos = await SupabaseService.getVideos();
+      if (supabaseVideos.length > 0) {
+        let filteredVideos = supabaseVideos;
+        if (channelId) {
+          filteredVideos = supabaseVideos.filter(video => video.channel_id === channelId);
+        }
+        registeredVideos.value = filteredVideos.map(video => ({
+          video_id: video.video_id,
+          total_study_time: video.total_study_time,
+          total_new_cards: video.total_new_cards,
+          total_learning_cards: video.total_learning_cards,
+          total_review_cards: video.total_review_cards,
+          created_at: video.created_at
+        }));
+        return;
       }
-      
-      registeredVideos.value = videos;
-      console.log('Final videos to display:', registeredVideos.value.length, 'videos');
+    } catch (supabaseError) {
+      console.warn('Supabase not available, using API fallback:', supabaseError);
+    }
+
+    // API fallback
+    const params = channelId ? { channel_id: channelId } : {};
+    const response = await api.get('videos/', { params });
+    if (response.status === 200) {
+      registeredVideos.value = response.data;
     }
   } catch (error) {
     console.error('Error fetching registered videos:', error);
-    alert('ビデオの取得に失敗しました: ' + error);
   } finally {
     isLoading.value = false;
   }
 };
 
+const loadSubtitles = async (videoId: string) => {
+  try {
+    const response = await api.get(`videos/${videoId}/transcript/`);
+    const data = response.data;
+
+    if (data.error) {
+      console.warn('Subtitle API error:', data.error);
+      englishSubtitles.value = [];
+      japaneseSubtitles.value = [];
+      displaySubtitles.value = [];
+      return;
+    }
+
+    // 互換: data.english / data.japanese 形式 or Gemini整形済み形式どちらにも対応
+    if (Array.isArray(data.english)) {
+      englishSubtitles.value = data.english as SubtitleEntry[];
+    } else if (data.subtitles?.english?.transcript) {
+      englishSubtitles.value = data.subtitles.english.transcript as SubtitleEntry[];
+    } else {
+      englishSubtitles.value = [];
+    }
+
+    if (Array.isArray(data.japanese)) {
+      japaneseSubtitles.value = data.japanese as SubtitleEntry[];
+    } else if (data.subtitles?.japanese?.transcript) {
+      japaneseSubtitles.value = data.subtitles.japanese.transcript as SubtitleEntry[];
+    } else {
+      japaneseSubtitles.value = [];
+    }
+
+    // 表示は英語優先、なければ日本語
+    displaySubtitles.value = englishSubtitles.value.length ? englishSubtitles.value : japaneseSubtitles.value;
+  } catch (e) {
+    console.error('Failed to load subtitles:', e);
+    englishSubtitles.value = [];
+    japaneseSubtitles.value = [];
+    displaySubtitles.value = [];
+  }
+};
+
 const selectVideo = async (video: RegisteredVideo) => {
   selectedVideo.value = video;
-  // 動画が変更されたら字幕をリセット
-  subtitles.value = null;
-  subtitleError.value = null;
-  selectedSubtitleLanguage.value = 'english';
-  
-  // 動画選択時に自動的に字幕を取得
-  console.log('動画選択時に字幕を自動取得開始:', video.video_id);
-  await fetchSubtitles();
+  currentTimeSec.value = 0;
+  await loadSubtitles(video.video_id);
+  startTicker();
+};
+
+const startTicker = () => {
+  if (timeTicker) {
+    window.clearInterval(timeTicker);
+  }
+  // 簡易ティッカー（1秒ごと）。クリックシーク時に値を更新して整合を保つ
+  timeTicker = window.setInterval(() => {
+    currentTimeSec.value += 1;
+  }, 1000);
+};
+
+const stopTicker = () => {
+  if (timeTicker) {
+    window.clearInterval(timeTicker);
+    timeTicker = null;
+  }
+};
+
+const isCurrentSubtitle = (sub: SubtitleEntry) => {
+  const start = sub.start;
+  const end = sub.start + (sub.duration || 0);
+  // durationが0/未設定の場合は±1.5秒幅で判定
+  if (!end || end <= start) {
+    return Math.abs(currentTimeSec.value - start) <= 1.5;
+  }
+  return currentTimeSec.value >= start && currentTimeSec.value < end;
+};
+
+const formatTime = (sec: number) => {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+};
+
+const seekTo = (seconds: number) => {
+  currentTimeSec.value = Math.max(0, Math.floor(seconds));
+  // YouTube IFrame API への postMessage コマンド
+  const iframeEl = playerIframe.value as HTMLIFrameElement | null;
+  if (!iframeEl || !iframeEl.contentWindow) return;
+  const message = JSON.stringify({
+    event: 'command',
+    func: 'seekTo',
+    args: [currentTimeSec.value, true]
+  });
+  iframeEl.contentWindow.postMessage(message, '*');
 };
 
 const removeVideo = async (video: RegisteredVideo) => {
   try {
-    console.log('Removing video:', video.video_id);
-    
-    const response = await api.delete(`videos/${video.video_id}/`);
-    
-    if (response.status === 204) {
-      console.log('Video deleted successfully');
+    // Try Supabase first
+    let success = false;
+    try {
+      success = await SupabaseService.deleteVideo(video.video_id);
+    } catch (supabaseError) {
+      console.warn('Supabase delete failed, using API fallback:', supabaseError);
+    }
+
+    // API fallback if Supabase fails
+    if (!success) {
+      const response = await api.delete(`videos/${video.video_id}/`);
+      success = response.status === 200;
+    }
+
+    if (success) {
       registeredVideos.value = registeredVideos.value.filter(v => v.video_id !== video.video_id);
-      
-      // 削除された動画が選択されている場合は選択を解除
+
       if (selectedVideo.value?.video_id === video.video_id) {
+        stopTicker();
         selectedVideo.value = null;
       }
     }
@@ -347,84 +574,213 @@ const removeVideo = async (video: RegisteredVideo) => {
   }
 };
 
-// 字幕取得機能
-const fetchSubtitles = async () => {
+// ハイライト関連の関数
+const handleTextSelection = (event: MouseEvent, subtitle: SubtitleEntry) => {
+  const selection = window.getSelection();
+  const selectedText = selection?.toString().trim();
+
+  if (!selectedText || selectedText.length === 0) {
+    return; // 選択されていない場合は何もしない
+  }
+
+  // ダイアログを開く
+  highlightForm.value = {
+    highlighted_text: selectedText,
+    timestamp: subtitle.start,
+    meaning_japanese: '',
+    etymology: '',
+    auto_generate: true,
+  };
+  generatedData.value = false;
+  showHighlightDialog.value = true;
+};
+
+const closeHighlightDialog = () => {
+  showHighlightDialog.value = false;
+  generatedData.value = false;
+  editingHighlightId.value = null;
+  imageFile.value = null;
+  highlightForm.value = {
+    highlighted_text: '',
+    timestamp: 0,
+    meaning_japanese: '',
+    etymology: '',
+    image_url: '',
+    auto_generate: true,
+  };
+};
+
+const saveHighlight = async () => {
   if (!selectedVideo.value) return;
-  
-  isLoadingSubtitles.value = true;
-  subtitleError.value = null;
-  
+
+  isSaving.value = true;
   try {
-    console.log('Fetching subtitles for video:', selectedVideo.value.video_id);
-    
-    const response = await api.get(`videos/${selectedVideo.value.video_id}/transcript/`);
-    
-    if (response.status === 200) {
-      subtitles.value = response.data.subtitles;
-      console.log('Subtitles fetched:', subtitles.value);
-      
-      // 利用可能な言語を確認して最初の言語を選択
-      if (subtitles.value.english) {
-        selectedSubtitleLanguage.value = 'english';
-      } else if (subtitles.value.japanese) {
-        selectedSubtitleLanguage.value = 'japanese';
+    if (editingHighlightId.value) {
+      // 更新
+      const updatedHighlight = await HighlightService.updateHighlight(
+        editingHighlightId.value,
+        {
+          highlighted_text: highlightForm.value.highlighted_text,
+          timestamp: highlightForm.value.timestamp,
+          meaning_japanese: highlightForm.value.meaning_japanese,
+          etymology: highlightForm.value.etymology,
+          image_url: highlightForm.value.image_url,
+        }
+      );
+
+      // リストを更新
+      const index = highlights.value.findIndex(h => h.id === editingHighlightId.value);
+      if (index !== -1) {
+        highlights.value[index] = updatedHighlight;
       }
+
+      Notify.create({
+        type: 'positive',
+        message: 'ハイライトを更新しました',
+        position: 'top',
+      });
+    } else {
+      // 新規作成
+      const payload: any = {
+        video_id: selectedVideo.value.video_id,
+        highlighted_text: highlightForm.value.highlighted_text,
+        timestamp: highlightForm.value.timestamp,
+        auto_generate: highlightForm.value.auto_generate,
+      };
+
+      // 手動入力された値も送信
+      if (highlightForm.value.meaning_japanese) {
+        payload.meaning_japanese = highlightForm.value.meaning_japanese;
+      }
+      if (highlightForm.value.etymology) {
+        payload.etymology = highlightForm.value.etymology;
+      }
+      if (highlightForm.value.image_url) {
+        payload.image_url = highlightForm.value.image_url;
+      }
+
+      const newHighlight = await HighlightService.createHighlight(payload);
+
+      // ハイライトリストに追加
+      highlights.value.unshift(newHighlight);
+
+      Notify.create({
+        type: 'positive',
+        message: 'ハイライトを保存しました',
+        position: 'top',
+      });
     }
-  } catch (error: any) {
-    console.error('Error fetching subtitles:', error);
-    subtitleError.value = error.response?.data?.error || '字幕の取得に失敗しました';
+
+    closeHighlightDialog();
+  } catch (error) {
+    console.error('Error saving highlight:', error);
+    Notify.create({
+      type: 'negative',
+      message: 'ハイライトの保存に失敗しました',
+      position: 'top',
+    });
   } finally {
-    isLoadingSubtitles.value = false;
+    isSaving.value = false;
   }
 };
 
-// 字幕言語のオプション
-const subtitleLanguageOptions = computed(() => {
-  if (!subtitles.value) return [];
-  
-  const options = [];
-  if (subtitles.value.english) {
-    options.push({ label: '英語', value: 'english' });
+const deleteHighlight = async (highlightId: number) => {
+  try {
+    await HighlightService.deleteHighlight(highlightId);
+    highlights.value = highlights.value.filter(h => h.id !== highlightId);
+
+    Notify.create({
+      type: 'positive',
+      message: 'ハイライトを削除しました',
+      position: 'top',
+    });
+  } catch (error) {
+    console.error('Error deleting highlight:', error);
+    Notify.create({
+      type: 'negative',
+      message: 'ハイライトの削除に失敗しました',
+      position: 'top',
+    });
   }
-  if (subtitles.value.japanese) {
-    options.push({ label: '日本語', value: 'japanese' });
+};
+
+const loadHighlights = async (videoId: string) => {
+  try {
+    highlights.value = await HighlightService.getHighlights(videoId);
+  } catch (error) {
+    console.error('Error loading highlights:', error);
   }
-  return options;
+};
+
+// 画像アップロード処理
+const handleImageUpload = async (file: File | null) => {
+  if (!file) {
+    highlightForm.value.image_url = '';
+    return;
+  }
+
+  try {
+    // 画像をBase64に変換（簡易実装）
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      highlightForm.value.image_url = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    Notify.create({
+      type: 'negative',
+      message: '画像のアップロードに失敗しました',
+      position: 'top',
+    });
+  }
+};
+
+// 画像削除
+const removeImage = () => {
+  highlightForm.value.image_url = '';
+  imageFile.value = null;
+};
+
+// ハイライト編集
+const editHighlight = (highlight: Highlight) => {
+  editingHighlightId.value = highlight.id!;
+  highlightForm.value = {
+    highlighted_text: highlight.highlighted_text,
+    timestamp: highlight.timestamp,
+    meaning_japanese: highlight.meaning_japanese || '',
+    etymology: highlight.etymology || '',
+    image_url: highlight.image_url || '',
+    auto_generate: false, // 編集時はAI生成オフ
+  };
+  showHighlightListDialog.value = false;
+  showHighlightDialog.value = true;
+};
+
+// タイムスタンプへジャンプして一覧を閉じる
+const seekToAndClose = (timestamp: number) => {
+  seekTo(timestamp);
+  showHighlightListDialog.value = false;
+};
+
+// 画像読み込みエラーハンドリング
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement;
+  console.error('Image failed to load:', img.src);
+  // 画像が読み込めない場合は非表示にする
+  img.style.display = 'none';
+};
+
+// 動画選択時にハイライトを読み込む
+watch(selectedVideo, (newVideo) => {
+  if (newVideo) {
+    loadHighlights(newVideo.video_id);
+  } else {
+    highlights.value = [];
+  }
 });
 
-// 現在の字幕データを取得
-const getCurrentSubtitleData = () => {
-  if (!subtitles.value || !selectedSubtitleLanguage.value) return null;
-  return subtitles.value[selectedSubtitleLanguage.value];
-};
-
-// 時間フォーマット関数
-const formatTime = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-// ソース色を取得
-const getSourceColor = (source: string) => {
-  if (source === 'original') return 'positive';
-  if (source === 'auto-generated') return 'info';
-  if (source.startsWith('translated')) return 'warning';
-  return 'grey';
-};
-
-// ソーステキストを取得
-const getSourceText = (source: string) => {
-  if (source === 'original') return 'オリジナル';
-  if (source === 'auto-generated') return '自動生成';
-  if (source === 'translated_from_english') return '英語から翻訳';
-  if (source === 'translated_from_japanese') return '日本語から翻訳';
-  if (source.startsWith('translated_from_')) return '翻訳';
-  return source;
-};
-
 onMounted(() => {
-  // URLからチャンネルIDを取得
   const channelId = route.query.channel_id as string;
   getRegisteredVideos(channelId);
 });
@@ -468,16 +824,6 @@ onMounted(() => {
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
 }
 
-/* 小さいサイズの動画コンテナ */
-.video-container-small {
-  position: relative;
-  width: 100%;
-  max-width: 640px; /* 最大幅を設定 */
-  height: 0;
-  padding-bottom: 36%; /* 16:9 aspect ratio for smaller size */
-  margin: 0 auto; /* センタリング */
-}
-
 .video-player {
   position: absolute;
   top: 0;
@@ -486,44 +832,74 @@ onMounted(() => {
   height: 100%;
 }
 
-/* 字幕スタイル */
-.subtitles-section .subtitle-content {
-  max-height: 400px;
+.subtitle-list .subtitle-scroll {
+  max-height: 260px;
   overflow-y: auto;
 }
 
-.subtitle-entries {
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 16px;
+.subtitle-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: text; /* テキスト選択を有効化 */
 }
 
-.subtitle-entry {
-  border-bottom: 1px solid #e0e0e0;
-  padding: 8px 0;
+.subtitle-row:hover { background: rgba(0,0,0,0.04); }
+.subtitle-row .time { color: #607d8b; font-variant-numeric: tabular-nums; width: 48px; }
+.subtitle-row .text {
+  flex: 1;
+  user-select: text; /* テキスト選択を有効化 */
+  cursor: text; /* テキストカーソルを表示 */
+}
+.subtitle-row .text::selection {
+  background-color: #ffeb3b; /* ハイライトカラー */
+  color: #000;
+}
+.subtitle-row.is-current {
+  background: linear-gradient(135deg, rgba(25,118,210,0.10), rgba(25,118,210,0.06));
+  border-left: 3px solid #1976d2;
 }
 
-.subtitle-entry:last-child {
-  border-bottom: none;
+/* ハイライトリストのスタイル */
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
-.time-stamp {
+.highlight-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 3px solid #4caf50;
+}
+
+.highlight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.highlight-image {
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 4px;
   display: block;
-  font-weight: 500;
-  margin-bottom: 4px;
 }
 
-.subtitle-line {
-  line-height: 1.5;
-  word-break: break-word;
+.ellipsis-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.subtitle-full-text {
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 16px;
-  line-height: 1.6;
-  word-break: break-word;
-  white-space: pre-wrap;
+.ellipsis-3-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
